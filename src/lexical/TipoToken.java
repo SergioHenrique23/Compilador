@@ -1,6 +1,6 @@
-
 //TODO: alterar as palavras dos tokens para a linguagem do compilador kécia
-package lexical.example;
+package lexical;
+
 
 public enum TipoToken {
     // SPECIALS
@@ -41,6 +41,7 @@ public enum TipoToken {
     OR, //||
     ELSE, // else
     IN, // in
+    IF_NULL, //??
     DENIAL, //!
     DECREMENT,//--
     INCREMENT,//++
@@ -69,7 +70,8 @@ public enum TipoToken {
     NULL,
     NAME,          // identifier
     NUMBER,        // integer
-    FLOAT,        // float
+
+    FLOAT, //float
     TEXT,
 
     INTEGER,

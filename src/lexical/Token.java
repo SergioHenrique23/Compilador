@@ -1,4 +1,4 @@
-package org.example;
+package lexical;
 
 public class Token {
     public String token;

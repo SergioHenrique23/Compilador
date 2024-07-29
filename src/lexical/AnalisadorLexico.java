@@ -1,16 +1,16 @@
-package lexical.example;
+package lexical;
 import java.io.FileInputStream;
 import java.io.PushbackInputStream;
 
 
-public class AnalisadorLexico {
-        private int line;
+public class AnalisadorLexico  implements AutoCloseable {
+    private int line;
     private TabelaDeSimbolos st;
     private PushbackInputStream input;
 
-    public AnalisadorLexico(String filename) {//testar
+    public AnalisadorLexico(String filename) {
         try {
-            input = new PushbackInputStream(new FileInputStream(filename), 2);
+            input = new PushbackInputStream(new FileInputStream(filename));
         } catch (Exception e) {
             throw new LexicalException("Unable to open file");
         }
@@ -36,14 +36,13 @@ public class AnalisadorLexico {
 
         int state = 1;
 
-        while (state != 12 && state != 13 && state != 14 && state != 15) {
+        while (state != 12 && state != 11  && state != 14 && state != 10) {
             int c = getc();
-
 
             switch (state) {
                 case 1:
-                    if(c == ' ' || c == '\t'){
-                       state = 1;
+                    if(c == ' ' || c == '\t'|| c == '\r'){
+                    state = 1;
                     }
                     else if(c =='\n'){
                         line++;
@@ -53,45 +52,46 @@ public class AnalisadorLexico {
                         state = 2;
                     }
                     else if(c==':'){
+                        lex.token += (char) c;
                         state = 3;
+                    }
+                    else if(c=='&'){
+                        lex.token += (char) c;
+                        state = 15;
                     }
                     else if(c=='!'||c=='<'||c=='>'){
                         lex.token += (char) c;
                         state = 4;
                     }
-                    else if(c=='+'||c=='-'||c=='+'||c=='*'||c=='/'||c=='('||c==')'||c==';'||c==','){
+                    else if(c=='='||c=='+'||c=='-'||c=='+'||c=='*'||c=='/'||c=='('||c==')'||c==';'||c==','){
                         lex.token += (char) c;
-                        state = 12;
+                        state = 10;
                     }
                     else if(c =='|'){
                         lex.token += (char) c;
                         state = 5;
                     }
-                    else if(c=='&'){
-                        lex.token += (char) c;
-                        state = 6;
-                    }
 
                     else if(Character.isDigit(c)){
                         lex.token += (char) c;
-                        state = 8;
+                        state = 7;
                     }
                     else if(Character.isLetter(c)||c=='_'){
                         lex.token += (char) c;
-                        state = 7;
+                        state = 6;
                     }
                     else if(c=='{'){
-                        //lex.token += (char) c;
-                        state = 9;
+                        state = 8;
                     }
                     else if (c == -1) {
                         lex.type = TipoToken.END_OF_FILE;
-                        state = 15;
+                        state = 14;
                     } else {
                         lex.token += (char) c;
                         lex.type = TipoToken.INVALID_TOKEN;
-                        state = 15;
+                        state = 14;
                     }
+
                     break;
                 case 2:
                     if(c=='\n'){
@@ -100,158 +100,141 @@ public class AnalisadorLexico {
                     }
                     else if (c == -1) {
                         lex.type = TipoToken.END_OF_FILE;
-                        state = 15;
+                        state = 14;
                     }
                     else{
                         state = 2;
                     }
-                    //analisar possibilidades de erro no c =! '/'
+                    break;
+                case 15:
+                    if(c=='&'){
+                        lex.token += (char) c;
+                        state = 10;
+                    }
+                    else if (c == -1) {
+                        lex.type = TipoToken.UNEXPECTED_EOF;
+                        state = 14;
+                    }
+                    else{
+                        lex.type = TipoToken.INVALID_TOKEN;
+                        state = 14;
+                    }
                     break;
                 case 3:
                     if(c=='='){
                         lex.token += (char) c;
-                        state = 12;
+                        state = 10;
                     }
                     else if (c == -1) {
                         lex.type = TipoToken.END_OF_FILE;
-                        state = 15;
+                        state = 14;
                     }
                     else{
                         lex.type = TipoToken.INVALID_TOKEN;
-                        state = 15;
+                        state = 14;
                     }
 
                     break;
                 case 4:
                     if(c=='='){
                         lex.token += (char) c;
-                        state = 12;
+                        state = 10;
                     }
                     else{
                         ungetc(c);
-                        state = 12;
+                        state = 10;
                     }
                     break;
                 case 5:
                     if(c=='|'){
                         lex.token += (char) c;
-                        state = 12;
+                        state = 10;
+                    }
+                    else if (c == -1) {
+                        lex.type = TipoToken.END_OF_FILE;
+                        state = 14;
                     }
                     else{
-                        ungetc(c);
                         lex.type = TipoToken.INVALID_TOKEN;
-                        state = 15;
+                        state = 14;
                     }
 
                     break;
                 case 6:
-                    if(c=='&'){
+                    if (Character.isLetter(c) ||
+                            Character.isDigit(c) ||
+                            c == '_') {
                         lex.token += (char) c;
-                        state = 12;
+                        state = 6;
                     }
                     else{
                         ungetc(c);
-                        lex.type = TipoToken.INVALID_TOKEN;
-                        state = 15;
+                        state = 10;
                     }
                     break;
                 case 7:
-                    if(c=='_'|| Character.isLetter(c)||Character.isDigit(c)){
+                    if(Character.isDigit(c)){
                         lex.token += (char) c;
                         state = 7;
                     }
-                    else{
-                        ungetc(c);
-                        state = 12;
-                    }
-                    break;
-                case 8:
-                    //adicionar tres pontos na tabela de simbolo
-                    if(Character.isDigit(c)){
-                        lex.token += (char) c;
-                        state = 8;
-                    }
-                    else if(c=='.'){
+                    else if (c=='.'){
                         lex.token += (char) c;
                         state = 9;
                     }
                     else{
-                        ungetc(c);
                         lex.type = TipoToken.NUMBER;
-                        state = 13;
-                    }
-
-                    break;
-                case 9:
-                    if(c=='}'){
                         ungetc(c);
+                        state = 11;
+                    }
+                    break;
+                case 8:
+                    if(c=='}'){
                         lex.type = TipoToken.TEXT;
+                        state = 12;
+                    }
+                    else if(c==-1){
+                        lex.type = TipoToken.UNEXPECTED_EOF;
                         state = 14;
                     }
                     else{
                         lex.token += (char) c;
-                        state = 9;
+                        state = 8;
                     }
+
                     break;
-                case 10:
+                case 9:
                     if(Character.isDigit(c)){
                         lex.token += (char) c;
+                        state = 16;
+                    }
+                    else if(c==-1){
+                        lex.type = TipoToken.UNEXPECTED_EOF;
+                        state = 14;
+                    }
+                    else {
+
+                        lex.type = TipoToken.INVALID_TOKEN;
+                        state = 14;
+                    }
+                    break;
+                case 16:
+                    if(Character.isDigit(c)){
+                        lex.token += (char) c;
+                        state = 16;
+                    }
+                    else {
+                        ungetc(c);
                         lex.type = TipoToken.FLOAT;
                         state = 11;
                     }
-                    else{
-                        lex.type = TipoToken.INVALID_TOKEN;
-                        state = 16;
-                    }
                     break;
-                case 11:
-                    if(Character.isDigit(c)){
-                        lex.token += (char) c;
-                        state = 11;
-                    }
-                    else{
-                        ungetc(c);
-                        state = 13;
-                    }
-                    break;
-                // case 12:
-                //     if(c=='_'||c=='$'||Character.isLetter(c)||Character.isDigit(c)){
-                //         lex.token += (char) c;
-                //         state = 12;
-                //     }
-                //     else{
-                //         ungetc(c);
-                //         state = 15;
-                //     }
-                //     break;
-                // case 13:
-                //     if(Character.isDigit(c)){
-                //         lex.token += (char) c;
-                //         state = 13;
-                //     }
-                //     else{
-                //         ungetc(c);
-                //         lex.type = TipoToken.NUMBER;
-                //         state = 16;
-                //     }
-                //     break;
-                // case 14:
-                //     if(c=='\''){
-                //         //lex.token += (char) c;
-                //         lex.type = TipoToken.TEXT;
-                //         state = 16;
-                //     }
-                //     else{
-                //         lex.token += (char) c;
-                //         state = 14;
-                //     }
-                //     break;
+
                 default:
                     throw new LexicalException("Unreachable");
             }
         }
 
-        if (state == 12)
+        if (state == 10)
             lex.type = st.get(lex.token);
 
         return lex;
