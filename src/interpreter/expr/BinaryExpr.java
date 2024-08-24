@@ -42,11 +42,11 @@ public class BinaryExpr extends Expr {
                 return equalOp(v1, v2);
             case NOT_EQUAL:
                 return notEqualOp(v1, v2);
-            case LOWER_THAN:
+            case LOWER:
                 return lowerThanOp(v1, v2);
             case LOWER_EQUAL:
                 return lowerEqualOp(v1, v2);
-            case GREATER_THAN:
+            case GREATER:
                 return greaterThanOp(v1, v2);
             case GREATER_EQUAL:
                 return greaterEqualOp(v1, v2);
