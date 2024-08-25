@@ -46,6 +46,7 @@ import interpreter.expr.MapExpr;
 
 import interpreter.util.Utils;
 import interpreter.value.BoolValue;
+import interpreter.value.FloatValue;
 import interpreter.value.NumberValue;
 import interpreter.value.TextValue;
 import interpreter.value.MapValue;
@@ -53,11 +54,12 @@ import interpreter.value.ListValue;
 import interpreter.value.Value;
 
 //import org.jcp.xml.dsig.internal.dom.Utils;
-
 import lexical.AnalisadorLexico;
 import lexical.TipoToken;
 import lexical.Token;
 
+
+//TODO: Utilizar os blocos command e revisar todas as produções
 public class AnaliseSintatica {
     private AnalisadorLexico lex;
     private Token current;
@@ -113,7 +115,7 @@ public class AnaliseSintatica {
 
     private void procProgram() {
         eat(TipoToken.APP);
-        procIdentifier();//eat(TipoToken.NAME);
+        procDeclarationName(false, false);//eat(TipoToken.NAME);
         procBody();
     }
 
@@ -133,9 +135,9 @@ public class AnaliseSintatica {
     //decl-list ::= decl {";" decl}
 
     private void proDeclList() {
-        proDecl();
+        procDecl();
         while(current.type == TipoToken.SEMICOLON){
-            proDecl();
+            procDecl();
         }
     }
 
@@ -148,11 +150,10 @@ public class AnaliseSintatica {
 
     // ident-list ::= identifier {"," identifier}
     private void procIdentList() {
-        procIdentifier();
+        procDeclarationName(false, false);
         while(current.type == TipoToken.COMMA){
-            procIdentifier();
+            procDeclarationName(false, false);
         }
-
     }
 
     // type ::= integer
@@ -206,14 +207,14 @@ public class AnaliseSintatica {
     private void procAssignStmt() {
         procIdentifier();
         eat(TipoToken.ASSIGN);
-        procSimpleExpr();
+        procSimpleExpression();
     }
 
     // if-stmt ::= if condition then stmt-list if-stmt2 end
     private void procIfStmt() {
         eat(TipoToken.IF);
         procCondition();
-        eat(TipoToken.Then);
+        eat(TipoToken.THEN);
         procStmtList();
         procIfStmt2();
         eat(TipoToken.END);
@@ -266,7 +267,12 @@ public class AnaliseSintatica {
     // writable ::= simple-expr
     //                   | litera
     private void procWritable() {
-
+        if(current.type == TipoToken.CURLY_BRACKETS_L){
+            procLiteral();
+        }
+        else{
+            procSimpleExpression();
+        }
     }
 
     // condition ::= expression
@@ -318,176 +324,85 @@ public class AnaliseSintatica {
         procTerm2();
     }
 
-    // <list> ::= '[' [ <l-elem> { ',' <l-elem> } ] ']'
-    private ListExpr procList() {
-        ListItem lElem = null;
-
-        eat(TipoToken.SQUARE_BRACKETS_L);
-        int line = lex.getLine();
-        ListExpr le = new ListExpr(line);
-
-        if (current.type == TipoToken.NOT ||
-                current.type == TipoToken.SUB ||
-                current.type == TipoToken.INC ||
-                current.type == TipoToken.DEC ||
-                current.type == TipoToken.PARENTESES_L ||
-                current.type == TipoToken.NULL ||
-                current.type == TipoToken.FALSE ||
-                current.type == TipoToken.TRUE ||
-                current.type == TipoToken.NUMBER ||
-                current.type == TipoToken.TEXT ||
-                current.type == TipoToken.READ ||
-                current.type == TipoToken.RANDOM ||
-                current.type == TipoToken.LENGTH ||
-                current.type == TipoToken.KEYS ||
-                current.type == TipoToken.VALUES ||
-                current.type == TipoToken.TOBOOL ||
-                current.type == TipoToken.TOINT ||
-                current.type == TipoToken.TOSTR ||
-                current.type == TipoToken.NAME ||
-                current.type == TipoToken.SQUARE_BRACKETS_L ||
-                current.type == TipoToken.CURLY_BRACKETS_L)  {
-            lElem = procLElem();
-            le.addItem(lElem);
-
-            while(current.type == TipoToken.COMMA) {
-                advance();
-                lElem = procLElem();
-                le.addItem(lElem);
-            }
+    // term2 ::= mulop factor-a term2
+    private void procTerm2() {
+        if(current.type == TipoToken.MUL||
+                current.type == TipoToken.DIV||
+                current.type == TipoToken.AND){
+            procFactorA();
+            procTerm2();
         }
-        
-        eat(TipoToken.SQUARE_BRACKETS_R);
-
-        return le;
-    } 
-
-    // <l-elem> ::= <l-single> | <l-spread> | <l-if> | <l-for>
-    private ListItem procLElem() {
-        ListItem li = null;
-
-        switch (current.type) {
-            case FOR:
-                li = procLFor();
-                break;
-            case IF:
-                li = procLIf();
-                break;
-            case SPREAD:
-                li = procLSpread();
-                break;
-            default:
-                li = procLSingle();
-                break;
-        }
-        return li;
     }
 
-    // <l-single> ::= <expr>
-    private SingleListItem procLSingle() {
-        Expr expr = procExpr();
-        int line = lex.getLine();
-        SingleListItem sli = new SingleListItem(line, expr);
-        return sli;
-    }
-
-    // <l-spread> ::= '...' <expr>
-    private SpreadListItem procLSpread() {
-        Expr expr = null;
-        eat(TipoToken.SPREAD);
-        int line = lex.getLine();
-        expr = procExpr();
-        SpreadListItem sli = new SpreadListItem(line, expr);
-
-        return sli;
-    }
-
-    // <l-if> ::= if '(' <expr> ')' <l-elem> [ else <l-elem> ]
-    private IfListItem procLIf() {
-        eat(TipoToken.IF);
-        int line = lex.getLine();
-        eat(TipoToken.PARENTESES_L);
-        Expr expr = procExpr();
-        eat(TipoToken.PARENTESES_R);
-        ListItem lIfElem = procLElem();
-        ListItem lElseElem = null;
-
-        if(current.type == TipoToken.ELSE) {
+    // factor-a ::= factor
+    //            | "!"factor
+    //            | "-"factor
+    private void procFactorA() {
+        if(current.type == TipoToken.DENIAL){
             advance();
-            lElseElem = procLElem();
+            procFactor();
         }
-
-        IfListItem ili = new IfListItem(line, expr, lIfElem, lElseElem);
-        return ili;
+        else if(current.type == TipoToken.SUB){
+            advance();
+            procFactor();
+        }
+        else{
+            procFactor();
+        }
     }
 
-    // <l-for> ::= for '(' <name> in <expr> ')' <l-elem>
-    private ForListItem procLFor() {
-        eat(TipoToken.FOR);
-        int line = lex.getLine();
-        eat(TipoToken.PARENTESES_L);
-        Variable name = procName();
-        eat(TipoToken.IN);
-        Expr lista = procExpr();
-        eat(TipoToken.PARENTESES_R);
-        ListItem li = procLElem();
+    // factor ::= identifier
+    //            | constant
+    //            | "(" expression ")"
 
-        ForListItem fli = new ForListItem(line, name, lista, li);
-
-        return fli;
+    private void procFactor() {
+        if(current.type == TipoToken.NAME){
+            procIdentifier();
+        }
+        else if(current.type == TipoToken.NUMBER||
+                current.type == TipoToken.FLOAT){
+            procConstant();
+        }
+        else if(current.type == TipoToken.PARENTESES_L){
+            advance();
+            procExpression();
+            eat(TipoToken.PARENTESES_R);
+        }
+        else{
+            showError();
+        }
     }
 
-    // <map> ::= '{' [ <m-elem> { ',' <m-elem> } ] '}'
-    private MapExpr procMap() {
+    // constant ::= digit+ float_constant
+    private void procConstant() {
+        if(current.type == TipoToken.NUMBER){
+            advance();
+        }
+        else if(current.type == TipoToken.FLOAT){
+            advance();
+        }
+        else{
+            showError();
+        }
+    }
+
+    // identifier ::= (letter | "_") (letter | digit | "_")*
+    private void procIdentifier() {
+        if(current.type == TipoToken.NAME){
+            procName();
+        }
+        else{
+            showError();
+        }
+    }
+
+    // literal ::= "{" caractere* "}"
+    private void procLiteral() {
         eat(TipoToken.CURLY_BRACKETS_L);
-        int line = lex.getLine();
-
-        MapExpr mexpr = new MapExpr(line);
-
-        if (current.type == TipoToken.NOT ||
-                current.type == TipoToken.SUB ||
-                current.type == TipoToken.INC ||
-                current.type == TipoToken.DEC ||
-                current.type == TipoToken.PARENTESES_L ||
-                current.type == TipoToken.NULL ||
-                current.type == TipoToken.FALSE ||
-                current.type == TipoToken.TRUE ||
-                current.type == TipoToken.NUMBER ||
-                current.type == TipoToken.TEXT ||
-                current.type == TipoToken.READ ||
-                current.type == TipoToken.RANDOM ||
-                current.type == TipoToken.LENGTH ||
-                current.type == TipoToken.KEYS ||
-                current.type == TipoToken.VALUES ||
-                current.type == TipoToken.TOBOOL ||
-                current.type == TipoToken.TOINT ||
-                current.type == TipoToken.TOSTR ||
-                current.type == TipoToken.NAME ||
-                current.type == TipoToken.SQUARE_BRACKETS_L ||
-                current.type == TipoToken.CURLY_BRACKETS_L) {
-            MapItem item = procMElem();
-            mexpr.addItem(item);
-
-            while (current.type == TipoToken.COMMA) {
-                advance();
-                item = procMElem();
-                mexpr.addItem(item);
-            }
+        while(current.type != TipoToken.CURLY_BRACKETS_R){
+            advance();
         }
         eat(TipoToken.CURLY_BRACKETS_R);
-
-        return mexpr;
-
-    }
-
-    // <m-elem> ::= <expr> ':' <expr>
-    private MapItem procMElem() {
-        Expr key = procExpr();
-        eat(TipoToken.COLON);
-        Expr value = procExpr();
-
-        MapItem item = new MapItem(key, value);
-        return item;
     }
 
     private Variable procDeclarationName(boolean constant, boolean nullable) {
@@ -535,6 +450,21 @@ public class AnaliseSintatica {
         }
 
         NumberValue nv = new NumberValue(n);
+        return nv;
+    }
+
+    private FloatValue procFloat() {
+        String txt = current.token;
+        eat(TipoToken.FLOAT);
+
+        float n;
+        try {
+            n = Float.parseFloat(txt);
+        } catch (Exception e) {
+            n = 0;
+        }
+
+        FloatValue nv = new FloatValue(n);
         return nv;
     }
 
