@@ -177,7 +177,7 @@ public class AnaliseSintatica {
             advance();
             procStmtList();
         }
-        else if(current.type != TipoToken.ELSE){
+        else if(current.type == TipoToken.END){
             return;
         }
         else{
@@ -215,7 +215,7 @@ public class AnaliseSintatica {
     }
 
     // writable ::= simple-expr
-    //                   | literal
+    //                  | literal
     private void procWritable() {
         if(current.type == TipoToken.CURLY_BRACKETS_L){
             procLiteral();
