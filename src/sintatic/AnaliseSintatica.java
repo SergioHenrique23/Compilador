@@ -1,63 +1,13 @@
 package sintatic;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import interpreter.command.AssignCommand;
-import interpreter.command.BlocksCommand;
-import interpreter.command.Command;
-import interpreter.command.PrintCommand;
-import interpreter.command.WhileCommand;
-import interpreter.command.AssertCommand;
-import interpreter.command.ForCommand;
-import interpreter.command.DoWhileCommand;
-
-import interpreter.command.IfCommand;
-import interpreter.expr.BinaryExpr;
-import interpreter.expr.BinaryOp;
-import interpreter.expr.ConstExpr;
-import interpreter.expr.Expr;
-import interpreter.expr.FunctionExpr;
-import interpreter.expr.FunctionOp;
-import interpreter.expr.SafeVariable;
-import interpreter.expr.SetExpr;
-import interpreter.expr.SingleListItem;
-import interpreter.expr.UnaryExpr;
-import interpreter.expr.UnaryOp;
-import interpreter.expr.UnsafeVariable;
-import interpreter.expr.Variable;
-import interpreter.expr.ListExpr;
-import interpreter.expr.IfListItem;
-import interpreter.expr.SingleListItem;
-import interpreter.expr.SpreadListItem;
-import interpreter.expr.ForListItem;
-import interpreter.expr.ListItem;
-import interpreter.expr.AccessExpr;
-import interpreter.expr.MapItem;
-import interpreter.expr.MapExpr;
-
-
-import interpreter.util.Utils;
-import interpreter.value.BoolValue;
-import interpreter.value.FloatValue;
-import interpreter.value.NumberValue;
-import interpreter.value.TextValue;
-import interpreter.value.MapValue;
-import interpreter.value.ListValue;
-import interpreter.value.Value;
-
-//import org.jcp.xml.dsig.internal.dom.Utils;
 import lexical.AnalisadorLexico;
 import lexical.TipoToken;
 import lexical.Token;
-
+import utils.expr.Variable;
+import utils.util.Utils;
 
 //TODO: Utilizar os blocos command e revisar todas as produções
 public class AnaliseSintatica {
@@ -115,7 +65,7 @@ public class AnaliseSintatica {
 
     private void procProgram() {
         eat(TipoToken.APP);
-        procDeclarationName(false, false);//eat(TipoToken.NAME);
+        procDeclarationName(false);//eat(TipoToken.NAME);
         procBody();
     }
 
@@ -150,9 +100,9 @@ public class AnaliseSintatica {
 
     // ident-list ::= identifier {"," identifier}
     private void procIdentList() {
-        procDeclarationName(false, false);
+        procDeclarationName(false);
         while(current.type == TipoToken.COMMA){
-            procDeclarationName(false, false);
+            procDeclarationName(false);
         }
     }
 
@@ -227,7 +177,7 @@ public class AnaliseSintatica {
             advance();
             procStmtList();
         }
-        else if(current.type == TipoToken.ELSE){
+        else if(current.type != TipoToken.ELSE){
             return;
         }
         else{
@@ -265,7 +215,7 @@ public class AnaliseSintatica {
     }
 
     // writable ::= simple-expr
-    //                   | litera
+    //                   | literal
     private void procWritable() {
         if(current.type == TipoToken.CURLY_BRACKETS_L){
             procLiteral();
@@ -405,7 +355,7 @@ public class AnaliseSintatica {
         eat(TipoToken.CURLY_BRACKETS_R);
     }
 
-    private Variable procDeclarationName(boolean constant, boolean nullable) {
+    private Variable procDeclarationName(boolean constant) {
         String name = current.token;
         eat(TipoToken.NAME);
         int line = lex.getLine();
@@ -414,11 +364,7 @@ public class AnaliseSintatica {
             Utils.abort(line, "A variável já foi declarada");
 
         Variable var;
-        if (nullable) {
-            var = new UnsafeVariable(line, name, constant);
-        } else {
-            var = new SafeVariable(line, name, constant);
-        }
+            var = new Variable(line, name, constant);
 
         memory.put(name, var);
 
@@ -436,42 +382,5 @@ public class AnaliseSintatica {
 
         Variable var = memory.get(name);
         return var;
-    }
-
-    private NumberValue procNumber() {
-        String txt = current.token;
-        eat(TipoToken.NUMBER);
-
-        int n;
-        try {
-            n = Integer.parseInt(txt);
-        } catch (Exception e) {
-            n = 0;
-        }
-
-        NumberValue nv = new NumberValue(n);
-        return nv;
-    }
-
-    private FloatValue procFloat() {
-        String txt = current.token;
-        eat(TipoToken.FLOAT);
-
-        float n;
-        try {
-            n = Float.parseFloat(txt);
-        } catch (Exception e) {
-            n = 0;
-        }
-
-        FloatValue nv = new FloatValue(n);
-        return nv;
-    }
-
-    private TextValue procText() {
-        String txt = current.token;
-        eat(TipoToken.TEXT);
-        TextValue tv = new TextValue(txt);
-        return tv;
     }
 }

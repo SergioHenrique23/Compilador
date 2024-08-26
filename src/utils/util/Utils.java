@@ -1,4 +1,4 @@
-package interpreter.util;
+package utils.util;
 
 public class Utils {
 
