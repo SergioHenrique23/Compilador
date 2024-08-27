@@ -9,7 +9,6 @@ import lexical.Token;
 import utils.expr.Variable;
 import utils.util.Utils;
 
-//TODO: Utilizar os blocos command e revisar todas as produções
 public class AnaliseSintatica {
     private AnalisadorLexico lex;
     private Token current;
@@ -87,6 +86,7 @@ public class AnaliseSintatica {
     private void proDeclList() {
         procDecl();
         while(current.type == TipoToken.SEMICOLON){
+            eat(TipoToken.SEMICOLON);
             procDecl();
         }
     }
@@ -101,15 +101,15 @@ public class AnaliseSintatica {
     // ident-list ::= identifier {"," identifier}
     private void procIdentList() {
         procDeclarationName(false);
-        while(current.type == TipoToken.COMMA){
-            procDeclarationName(false);
+        if(current.type == TipoToken.COMMA){
+            eat(TipoToken.COMMA);
+            procIdentList();
         }
     }
 
     // type ::= integer
     //             | real
     private void procType() {
-        
         if(current.type == TipoToken.INTEGER || current.type == TipoToken.REAL ){
             advance();
         }
@@ -122,6 +122,7 @@ public class AnaliseSintatica {
     private void procStmtList() {
        procStmt();
        while (current.type == TipoToken.SEMICOLON){
+            eat(TipoToken.SEMICOLON);
            procStmt();
        }
     }
@@ -260,11 +261,20 @@ public class AnaliseSintatica {
     // simple-expr2 ::= addop term simple-expr2
     //          		     | λ
     private void procSimpleExpression2() {
-        if(current.type == TipoToken.ADD||
-                current.type == TipoToken.SUB||
-                current.type == TipoToken.OR){
+        if(current.type == TipoToken.ADD){
+            eat(TipoToken.ADD);
             procTerm();
-            procExpression2();
+            procSimpleExpression2();
+        }
+        if(current.type == TipoToken.SUB){
+            eat(TipoToken.SUB);
+            procTerm();
+            procSimpleExpression2();
+        }
+        if(current.type == TipoToken.OR){
+            eat(TipoToken.OR);
+            procTerm();
+            procSimpleExpression2();
         }
     }
 
@@ -279,6 +289,21 @@ public class AnaliseSintatica {
         if(current.type == TipoToken.MUL||
                 current.type == TipoToken.DIV||
                 current.type == TipoToken.AND){
+            procFactorA();
+            procTerm2();
+        }
+        if(current.type == TipoToken.MUL){
+            eat(TipoToken.MUL);
+            procFactorA();
+            procTerm2();
+        }
+        if(current.type == TipoToken.DIV){
+            eat(TipoToken.DIV);
+            procFactorA();
+            procTerm2();
+        }
+        if(current.type == TipoToken.AND){
+            eat(TipoToken.AND);
             procFactorA();
             procTerm2();
         }
